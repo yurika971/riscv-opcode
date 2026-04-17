@@ -7,7 +7,7 @@ INSTALL_HEADER_FILES := $(ISASIM_H) $(PK_H) $(ENV_H) $(OPENOCD_H)
 PSEUDO_FLAG := $(if $(PSEUDO),-pseudo,)
 
 ifeq ($(shell command -v uv 2>/dev/null),)
-	RUNNER := PYTHONPATH=src python -m
+	RUNNER := PYTHONPATH=src python3 -m
 else
 	RUNNER := uv run
 endif
