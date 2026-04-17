@@ -102,13 +102,15 @@ def parse_field(field_str):
     return None
 
 def generate_binary_pattern(remaining_content, arg_lut):
-    """Generate a binary pattern with * for parameters and binary for fixed values, grouped by fields."""
+    """Generate a binary pattern with . for parameters and binary for fixed values, grouped by fields."""
     # Initialize a 32-character array with '0' (or we can use a different placeholder for unset bits)
     pattern = ['0'] * 32
     
     # Parse each field in the content
     fields = remaining_content.split()
-    field_info = []  # Store (low, high, bits) for each field in order
+    field_info = []  # Store (low, high, bits, is_fixed) for each field in order
+    
+    unop_counter = 0
     
     for field in fields:
         # Check if it's a fixed value field like "14..12=2" or "12=0"
@@ -118,24 +120,32 @@ def generate_binary_pattern(remaining_content, arg_lut):
                 high, low, value_bits = result
                 for i, bit in enumerate(value_bits):
                     pattern[31 - (low + i)] = bit  # bit 31 is index 0
-                field_info.append((low, high, value_bits))
+                unop_name = 'unop{}'.format(unop_counter)
+                unop_counter += 1
+                field_info.append((low, high, value_bits, unop_name, True))
                 continue
         # Otherwise it's a parameter name, look it up in arg_lut
         if field in arg_lut:
                 high, low = arg_lut[field]
                 num_bits = high - low + 1
-                value_bits = '*' * num_bits
-                # Replace with * for each bit position
+                value_bits = '.' * num_bits
+                # Replace with . for each bit position
                 for i in range(num_bits):
-                    pattern[31 - (low + i)] = '*'
-                field_info.append((low, high, value_bits))
+                    pattern[31 - (low + i)] = '.'
+                field_info.append((low, high, value_bits, field, False))
     
     # Sort by high bit position (descending order) to match the actual bit layout (high to low)
     field_info.sort(key=lambda x: x[1], reverse=True)
     
     # Build output with spaces between fields
-    result_parts = [bits for _, _, bits in field_info]
-    return ' '.join(result_parts)
+    result_parts = [bits for _, _, bits, _, _ in field_info]
+    bin_output = ' '.join(result_parts)
+    
+    # Build Attr output
+    attr_parts = [name for _, _, _, name, _ in field_info]
+    attr_output = ' '.join(attr_parts)
+    
+    return bin_output, attr_output
 
 def main():
     import sys
@@ -156,10 +166,12 @@ def main():
         sys.exit(1)
     
     # Generate binary pattern
-    pattern = generate_binary_pattern(remaining_content, arg_lut)
+    bin_pattern, attr_pattern = generate_binary_pattern(remaining_content, arg_lut)
     
     # Output the result
-    print('"{}"'.format(pattern))
+    # print('Name = "{}"'.format(op_name.upper()))
+    print('BIN =  "{}"'.format(bin_pattern))
+    print('Attr = "{}"'.format(attr_pattern))
 
 if __name__ == '__main__':
     main()
